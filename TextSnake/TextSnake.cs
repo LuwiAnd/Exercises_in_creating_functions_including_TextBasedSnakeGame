@@ -1,16 +1,17 @@
 ﻿char boxChar = '#';
 char obstacleChar = '#';
 char snakeChar = '@';
-char appleChar = '+';
+char foodChar = 'o';
 char emptyChar = ' ';
 
-int snakeLength = 1;
 
 
 
-int[] GenerateSteps2NextObstacle(int numberObstacles, int height, int width, int snakeSize)
+
+//int[] GenerateSteps2NextObstacle(int numberObstacles, int height, int width, int snakeSize)
+int[] GenerateSteps2NextObstacle(int numberObstacles, int height, int width, int availableSquares)
 {
-    int availableSquares = (height - 2) * (width - 2) - snakeSize;
+    // int availableSquares = (height - 2) * (width - 2) - snakeSize;
 
     int[] steps = new int[numberObstacles];
 
@@ -61,6 +62,46 @@ char[,] AddObstacles2Box(char[,] Box, int height, int width, int[] steps)
     }
 
     return Box;
+}
+
+
+char[,] GenerateFood(char[,] box, int[,] snake, int availableSquares)
+{
+    Random random = new Random();
+    int steps = random.Next(1, availableSquares + 1);
+
+    bool isOccupiedBySnake = false;
+    // Rader i 2D-array = GetLength(0)
+    for (int j = 0; j < box.GetLength(0); j++)
+    {
+        for (int k = 0; k < box.GetLength(1); k++)
+        {
+            isOccupiedBySnake = false;
+            for(int m = 0; m < snake.GetLength(0); m++)
+            {
+                if (snake[m, 0] == j && snake[m, 1] == k) isOccupiedBySnake = true;
+            }
+
+            if (box[j, k] == emptyChar && !isOccupiedBySnake) // Här måste jag kontrollera att jag inte lägger maten där ormen är.
+            {
+                steps--;
+            }
+            if (steps <= 0)
+            {
+                Console.SetCursorPosition(1, 1);
+                Console.Write($"food is at position {j}, {k}");
+                box[j, k] = foodChar;
+                break;
+            }
+        }
+
+        if (steps <= 0)
+        {
+            break;
+        }
+    }
+
+    return box;
 }
 
 //int[,] DrawBox(int height, int width, int numberObstacles)
@@ -115,13 +156,27 @@ void showBox(char[,] box)
 {
     for(int i = 0; i < box.GetLength(0); i++)
     {
-        for(int j = 0; j < box.GetLength(1); j++)
+        for (int j = 0; j < box.GetLength(1); j++)
         {
             //Console.SetCursorPosition(1, 1); // Test.
             Console.SetCursorPosition(left: j + 1, top: i + 10);
-            Console.Write(box[i, j]);
 
-            //Thread.Sleep(1);
+            if (box[i, j] == foodChar)
+            {
+                Console.ForegroundColor = ConsoleColor.Magenta;
+                Console.Write(box[i, j]);
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+            else if (box[i, j] == snakeChar)
+            {
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.Write(box[i, j]);
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+            else
+            {
+                Console.Write(box[i, j]);
+            }
         }
     }
 }
@@ -180,7 +235,7 @@ int[,] UpdateSnake(char[,] box, int[,] snake, string direction)
         }
         else
         {
-            Console.WriteLine(i);
+            //Console.WriteLine(i);
             snake[i, 0] = snake[i + 1, 0];
             snake[i, 1] = snake[i + 1, 1];
         }
@@ -191,7 +246,7 @@ int[,] UpdateSnake(char[,] box, int[,] snake, string direction)
 }
 
 
-bool checkGameOver(char[,] box, int[,] snake)
+bool CheckGameOver(char[,] box, int[,] snake)
 {
     int snakeLength = snake.GetLength(0);
 
@@ -200,8 +255,78 @@ bool checkGameOver(char[,] box, int[,] snake)
 
     char posChar = box[snakeHeadX, snakeHeadY];
 
-    return posChar == boxChar || posChar == obstacleChar;
+    bool isSnakeBitingItself = false;
+    for(int i = 0; i < snakeLength - 1; i++)
+    {
+        if (
+            snake[i, 0] == snake[snakeLength - 1, 0] 
+            && 
+            snake[i,1] == snake[snakeLength - 1, 1]
+        )
+        {
+            isSnakeBitingItself = true;
+        }
+    }
+
+    return posChar == boxChar || posChar == obstacleChar || isSnakeBitingItself;
 }
+
+
+bool CheckIfEating(char[,] box, int[,] snake)
+{
+    int snakeLength = snake.GetLength(0);
+
+    int snakeHeadX = snake[snakeLength - 1, 0];
+    int snakeHeadY = snake[snakeLength - 1, 1];
+
+    char posChar = box[snakeHeadX, snakeHeadY];
+
+    return posChar == foodChar;
+}
+
+int[,] EatFood(int[,] snake)
+{
+    int snakeLength = snake.GetLength(0);
+    //int snakeNumberOfCoordinateValues = snake.GetLength(1);
+
+    int[,] tmpSnake = new int[snakeLength + 1, 2];
+
+    tmpSnake[0, 0] = snake[0, 0];
+    tmpSnake[0, 1] = snake[0, 1];
+    for(int i = 0; i < snakeLength; i++)
+    {
+        tmpSnake[i + 1, 0] = snake[i, 0];
+        tmpSnake[i + 1, 1] = snake[i, 1];
+    }
+
+    return tmpSnake;
+}
+
+char[,] RemoveFood(char[,] box)
+{
+    int boxHeight = box.GetLength(0);
+    int boxWidth = box.GetLength(1);
+
+    //bool isFoodRemoved = false;
+    for(int i = 0; i < boxHeight; i++)
+    {
+        //if (isFoodRemoved) break;
+        for(int j = 0; j < boxWidth; j++)
+        {
+            if (box[i, j] == foodChar)
+            {
+                box[i, j] = emptyChar;
+                return box;
+                //isFoodRemoved = true;
+                //break;
+            }
+        }
+    }
+
+    Console.WriteLine("No food to remove!");
+    return box;
+}
+//char[,] RemoveFood(char[,] box, int snakeHeadXPosition, int snakeHeadYPosition, int snakeLength)
 
 string changeDirection(string currentDirection)
 {
@@ -308,7 +433,10 @@ string changeDirection(string currentDirection)
 void PlayGame()
 {
     int height = 10;
-    int width = 50;
+    int width = 10; // 50;
+    int snakeLength = 3;
+
+    int availableSquares = (height - 2) * (width - 2) - snakeLength; // snakeSize;
     int numberObstacles = 5;
 
     Console.WriteLine("-----------------------------------------------------------------------------------------------------------------------");
@@ -335,18 +463,23 @@ void PlayGame()
     Console.WriteLine("-----------------------------------------------------------------------------------------------------------------------");
 
     char[,] box = DrawBox(height: height, width: width, numberObstacles: numberObstacles);
-    int[] obstacleSpacing = GenerateSteps2NextObstacle(numberObstacles: numberObstacles, height: height, width: width, snakeSize: snakeLength);
+    //int[] obstacleSpacing = GenerateSteps2NextObstacle(numberObstacles: numberObstacles, height: height, width: width, snakeSize: snakeLength);
+    int[] obstacleSpacing = GenerateSteps2NextObstacle(numberObstacles: numberObstacles, height: height, width: width, availableSquares: availableSquares);
+    availableSquares -= numberObstacles;
     box = AddObstacles2Box(Box: box, height: height, width: width, steps: obstacleSpacing);
 
-    showBox(box);
-
-    //int[,] snake = new int[1, 2] { { height / 2, width / 2 } };
-    int[,] snake = new int[3, 2] { 
-        { height / 2, width / 2 }, 
-        { (height / 2) + 1, width / 2 }, 
-        { (height / 2) + 2, width / 2 } 
+    int[,] snake = new int[3, 2] {
+        { height / 2, width / 2 },
+        { (height / 2) + 1, width / 2 },
+        { (height / 2) + 2, width / 2 }
     };
     string direction;
+
+
+    box = GenerateFood(box, snake, availableSquares);
+    showBox(box);
+
+    
 
     char[,] box2 = box.Clone() as char[,];
     //char[,] box2 = AddSnake(box2, snake);
@@ -354,19 +487,29 @@ void PlayGame()
 
     showBox(box2);
 
+    bool isEating = false;
     bool gameOver = false;
-    direction = "up";
+    direction = "right";
     int test = 0;
     while (!gameOver)
     {
+        isEating = false;
         snake = UpdateSnake(box, snake, direction);
-        gameOver = checkGameOver(box, snake);
+        isEating = CheckIfEating(box, snake);
+        if (isEating)
+        {
+            snake = EatFood(snake);
+            box = RemoveFood(box);
+            box = GenerateFood(box, snake, availableSquares);
+            availableSquares--;
+        }
+        gameOver = CheckGameOver(box, snake);
 
         box2 = box.Clone() as char[,];
         box2 = AddSnake(box2, snake);
         showBox(box2);
         direction = changeDirection(direction);
-        Console.WriteLine(++test);
+        //Console.WriteLine(++test);
     }
 
     Console.WriteLine();
